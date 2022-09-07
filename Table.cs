@@ -64,7 +64,6 @@ public class DatabaseTable<T> where T : class, new()
             InitBuilder.Append($"{NameString} {TypeString}{ExtraBuilder},");
             ExtraBuilder.Clear();
             Column column = new(field, NameString, isAutoIncrement);
-            Console.WriteLine("{0} {1}", NameString, isAutoIncrement);
             ColumnList.Add(column);
         }
         InitBuilder.Remove(InitBuilder.Length - 1, 1);//Removes the extra comma
