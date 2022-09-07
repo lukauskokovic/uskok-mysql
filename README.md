@@ -40,7 +40,7 @@ class Person{
 }
 //Dont forget to connect to the database!!!
 DatabaseTable<Person> Table = new("Table_Name", Database);
-//The table creation requiest:
+//The table creation request:
 ```
 ```sql
 CREATE TABLE IF NOT EXIST `Table_Name` (SocialNumber INT PRIMARY KEY, Name TEXT);'
@@ -57,7 +57,7 @@ class Person{
 }
 //Dont forget to connect to the database!!!
 DatabaseTable<Person> Table = new("Table_Name", Database);
-//The table creation requiest:
+//The table creation request:
 ```
 ```sql
 CREATE TABLE IF NOT EXIST `Table_Name` (SocialNumber INT AUTO_INCREMENT, Name TEXT);'
@@ -89,7 +89,7 @@ class Person{
 }
 //Dont forget to connect to the database!!!
 DatabaseTable<Person> Table = new("Table_Name", Database);
-//The table creation requiest:
+//The table creation request:
 ```
 ```sql
 CREATE TABLE IF NOT EXIST `Table_Name` (SocialNumber INT);'
@@ -105,7 +105,7 @@ class Person{
 }
 //Dont forget to connect to the database!!!
 DatabaseTable<Person> Table = new("Table_Name", Database);
-//The table creation requiest:
+//The table creation request:
 ```
 ```sql
 CREATE TABLE IF NOT EXIST `Table_Name` (SocialNumber INT, Name VARCHAR(30));'
@@ -121,8 +121,44 @@ class Person{
 }
 //Dont forget to connect to the database!!!
 DatabaseTable<Person> Table = new("Table_Name", Database);
-//The table creation requiest:
+//The table creation request:
 ```
 ```sql
 CREATE TABLE IF NOT EXIST `Table_Name` (SocialNumber INT, namelowercase TEXT);'
+```
+
+## Inserting
+``csharp
+class Person{
+  public int SocialNumber;
+  public string Name;
+}
+DatabaseTable<Person> Table = new("Table_Name", Database);
+while(!Table.Created)await Task.Delay(1);
+Person p1 = new (){ SocialNumber = 0, Name = "John Doe" };
+Person p2 = new (){ SocialNumber = 1, Name = "Jane Doe" };
+await Table.Insert(p1, p2);
+```
+
+## Inserting and getting inserted ids
+This is considering the table is empty
+``csharp
+class Person{
+  [PrimaryKey]
+  [AutoIncrement]
+  public long SocialNumber;
+  public string Name;
+}
+DatabaseTable<Person> Table = new("Table_Name", Database);
+while(!Table.Created)await Task.Delay(1);
+Person p1 = new (){ Name = "John Doe" };
+Person p2 = new (){ Name = "Jane Doe" };
+object[] ids = await Table.Insert(p1, p2);
+// Table content
+// SN  |  Name
+// 0   |  "John Doe"
+// 1   |  "Jane Doe"
+// ids array
+// 0 | 0
+// 1 | 1
 ```
