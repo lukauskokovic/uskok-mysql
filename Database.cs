@@ -105,6 +105,5 @@ public class Database : IDisposable
         MYSqlTask task = new() { Command = command, Finished = false, ReaderCallback = callback };
         TaskQueue.Enqueue(task);
         while (!task.Finished) await Task.Delay(10);
-        Console.WriteLine("Done with task");
     }
 }

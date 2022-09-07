@@ -34,9 +34,21 @@ public class ColumnIgnore : Attribute { }
 [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
 public class MaxLength : Attribute
 {
-    public int Length = 0;
+    public int Length;
     public MaxLength(int length)
     {
         Length = length;
+    }
+}
+/// <summary>
+/// Used to specify a custom name for a column
+/// </summary>
+[AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+public class ColumnName : Attribute
+{
+    public string Name;
+    public ColumnName(string name)
+    {
+        Name = name;
     }
 }

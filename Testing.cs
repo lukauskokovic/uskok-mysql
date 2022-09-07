@@ -11,31 +11,20 @@ class MainClass
         Task.Run(async () => 
         {
             Database dBase = new("Server=localhost;Database=test;Uid=root;Pwd=;", 3);
-            await dBase.Execute("INSERT INTO testtable VALUES (null, '3')");
-            await dBase.Execute("INSERT INTO testtable VALUES (null, '3')");
-            await dBase.Execute("INSERT INTO testtable VALUES (null, '3')");
-            await dBase.Execute("INSERT INTO testtable VALUES (null, '3')");
-            await dBase.Execute("INSERT INTO testtable VALUES (null, '3')");
-            await dBase.Execute("INSERT INTO testtable VALUES (null, '3')");
-            await dBase.Execute("INSERT INTO testtable VALUES (null, '3')");
-            await dBase.Execute("INSERT INTO testtable VALUES (null, '3')");
-            await dBase.Execute("SELECT * FROM testtable", async (reader) => 
-            {
-                Console.WriteLine("Reading {0}", await reader.ReadAsync());
-
-            });
-            Console.WriteLine("Finished");
+            DatabaseTable<TestTable> test = new("test", dBase);
+            TestTable[] tables = new TestTable[1000];
+            for (int i = 0; i < tables.Length; i++)
+                tables[i] = new()
+                {
+                    ID = i,
+                    Name = $"kitac pitac {i}",
+                    Test = i % 2 == 0
+                };
+            await test.Replace(tables);
+            Console.WriteLine("Done");
         });
         Console.ReadKey(true);
     }
-    static void Test()
-    {
-        Console.WriteLine("Starting task");
-        Thread.Sleep(1000);
-        Console.WriteLine("Tasl end");
-    }
-
-    static async Task DelayTask() => await Task.Delay(100);
 }
 
 class TestTable
@@ -45,8 +34,7 @@ class TestTable
     public int ID;
     [NotNull]
     [MaxLength(20)]
+    [ColumnName("kitac")]
     public string Name;
-
-    [ColumnIgnore]
     public bool Test;
 }

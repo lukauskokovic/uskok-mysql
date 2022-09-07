@@ -9,6 +9,13 @@ public class MYSqlParser
 {
     public Dictionary<Type, Func<object, object>> CustomConversions = new();
     public Dictionary<Type, string> CustomMYSQLTypes = new();
+    /// <summary>
+    /// Dictionary of illegal characters in a string, (value is used 
+    /// </summary>
+    public HashSet<char> IllegalChars = new()
+    {
+        '<', '>', (char)39//(char)39 = '
+    };
 
     public object Parse<T>(T value) => Parse(value, typeof(T));
 

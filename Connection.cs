@@ -29,18 +29,14 @@ internal class Connection
                 else
                 {
                     var reader = await Command.ExecuteReaderAsync();
-                    Console.WriteLine("Triggering");
                     await task.ReaderCallback(reader);
-                    Console.WriteLine("Done");
                 }
             } 
             catch(Exception ex)
             {
                 Console.WriteLine($"Error processing {task.Command}: {ex.Message}");
             }
-            Console.WriteLine("Resting");
             task.Finished = true;
-            Console.WriteLine("Setting task as finished");
             Used = false;
         });
     }
