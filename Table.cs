@@ -62,6 +62,7 @@ public class DatabaseTable<T> where T : class, new()
             InitBuilder.Append($"{NameString} {TypeString}{ExtraBuilder},");
             ExtraBuilder.Clear();
             Column column = new(field, NameString, isAutoIncrement);
+            Console.WriteLine("{0} {1}", NameString, isAutoIncrement);
             ColumnList.Add(column);
         }
         InitBuilder.Remove(InitBuilder.Length - 1, 1);//Removes the extra comma
@@ -101,10 +102,10 @@ public class DatabaseTable<T> where T : class, new()
         return stringBuilder.ToString();
     }
 
-    private string GetSQLStringForArray(T[] values, bool replace)
+    private async Task<string> GetSQLStringForArray(T[] values, bool replace)
     {
         if (values.Length == 0) return string.Empty;
-
+        await Task.Yield();
         StringBuilder CommandBuilder = new($"{(replace ? "REPLACE" : "INSERT")} INTO `{Name}` VALUES ");
         for (int i = 0; i < values.Length; i++)
             CommandBuilder.Append(GetInsertString(values[i]));
@@ -118,20 +119,35 @@ public class DatabaseTable<T> where T : class, new()
     /// </summary>
     /// <param name="values">Element array</param>
     /// <returns>Awaitable task</returns>
-    public async Task Insert(params T[] values) 
-    {
-        Console.WriteLine("Getting string");
-        var s = GetSQLStringForArray(values, false);
-        Console.WriteLine("Executig");
-        await Parent.Execute(s);
-    }
+    public async Task Insert(params T[] values) => await Parent.Execute(await GetSQLStringForArray(values, false));
     /// <summary>
     /// Replace and array into the table(REPLACE INTO)
     /// </summary>
     /// <param name="values"></param>
     /// <returns></returns>
-    public async Task Replace(params T[] values) => await Parent.Execute(GetSQLStringForArray(values, true));
-
+    public async Task Replace(params T[] values) => await Parent.Execute(await GetSQLStringForArray(values, true));
+    /// <summary>
+    /// Inserts into the table and reutrns the ids assosiated
+    /// </summary>
+    /// <param name="values">Array of values to insert</param>
+    /// <returns>Array of ids</returns>
+    /// <exception cref="Exception">: when the table does not contain a primary id with auto increment</exception>
+    public async Task<object[]> InsertAndReturnAIIds(params T[] values)
+    {
+        if (values.Length == 0) return new object[0];
+        if (PrimaryKeyIndex == -1 || !Columns[PrimaryKeyIndex].AutoIncrement) throw new Exception($"'{Name}': table has no primary key with auto increment");
+        var idColumn = Columns[PrimaryKeyIndex];
+        string Command = $"{await GetSQLStringForArray(values, false)}SELECT {idColumn.Name} from {Name} order by {idColumn.Name} desc limit {values.Length};";
+        object[] ids = new object[values.Length];
+        await Parent.Execute(Command, async (reader) => 
+        {
+            for (int i = ids.Length-1; i >= 0 && await reader.ReadAsync(); i--)
+            {
+                ids[i] = Parent.Parser.ReadType(reader, 0, idColumn.FieldInfo.FieldType);
+            }
+        });
+        return ids;
+    }
 
     /// <summary>
     /// Retruns all elements from the table
