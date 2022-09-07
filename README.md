@@ -162,3 +162,5 @@ object[] ids = await Table.Insert(p1, p2);
 // 0 | 0
 // 1 | 1
 ```
+
+# TODO DOCUMENTATION: Writing and Reading of custom classes
