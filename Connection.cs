@@ -3,13 +3,21 @@ using System;
 using System.Threading.Tasks;
 
 namespace MYSql;
-
+/// <summary>
+/// An open mysql connection
+/// </summary>
 internal class Connection
 {
+    /// <summary>
+    /// Instance to the mysqlconnector connection
+    /// </summary>
     private readonly MySqlConnection ConnectionInstane;
+    /// <summary>
+    /// Indicates if the connection is in use
+    /// </summary>
     internal bool Used = true;
 
-    public Connection(Database parentDatabase)
+    internal Connection(Database parentDatabase)
     {
         ConnectionInstane = new MySqlConnection(parentDatabase.ConnectionString);
         ConnectionInstane.Open();
@@ -23,12 +31,14 @@ internal class Connection
         {
             try
             {
-                using var Command = new MySqlCommand(task.Command, ConnectionInstane);
-                if (task.ReaderCallback == null)
+                var Command = new MySqlCommand(task.Command, ConnectionInstane);
+                if (task.ReaderCallback == null)//Means that we dont expect anything back from the database(insert, replace, update)
                     await Command.ExecuteNonQueryAsync();
                 else
                 {
+                    //Gets the reader
                     var reader = await Command.ExecuteReaderAsync();
+                    //Awaits the reader callback(reading data)
                     await task.ReaderCallback(reader);
                     await reader.DisposeAsync();
                 }

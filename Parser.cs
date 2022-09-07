@@ -7,37 +7,52 @@ using System.Threading.Tasks;
 namespace MYSql;
 public class MYSqlParser
 {
-    public MYSqlParser(Dictionary<Type, Func<object, object>> customWritings = null, Dictionary<Type, SQLCustomConversion> customReadings = null, Dictionary<Type, string> customTypes = null)
+    public MYSqlParser(Dictionary<Type, Func<object, object>> customWritings = null, Dictionary<Type, SQLCustomConversion> customReadings = null)
     {
-        CustomConversions = customWritings ?? CustomConversions;
-        CustomReadings = customReadings ?? CustomReadings;
-        CustomMYSQLTypes = customTypes ?? CustomMYSQLTypes;
+        AddToDictiaonry(CustomWritings, customWritings);
+        AddToDictiaonry(CustomReadings, customReadings);
     }
-    public Dictionary<Type, Func<object, object>> CustomConversions = new()
+
+    private void AddToDictiaonry<Tkey, Tvalue>(Dictionary<Tkey, Tvalue> source, Dictionary<Tkey, Tvalue> addition)
+    {
+        if (addition == null) return;
+
+        foreach(var item in addition)
+        {
+            source[item.Key] = item.Value;
+        }
+    }
+    /// <summary>
+    /// Dictionary with rules on how to serilize custom object types to primitive types (example TestClass->long)
+    /// Example(pseudo code) CustomWritings[typeof(DateTime)] = (datetime) => (long)DateTime.ToUnix((DateTime)datetime)
+    /// The example above converts datetime to long which will be stored in the table
+    /// </summary>
+    public Dictionary<Type, Func<object, object>> CustomWritings = new()
     {
         [typeof(DateTime)] = (obj) => 
         {
             DateTime time = (DateTime)obj;
-            long unixTimestamp = (long)time.Subtract(new DateTime(1970, 1, 1)).TotalMilliseconds;
+            ulong unixTimestamp = (ulong)time.Subtract(new DateTime(1970, 1, 1)).TotalMilliseconds;
             return unixTimestamp;
         }
     };
-
+    /// <summary>
+    /// Dictionary with rules on how to read and store primtive types in database and convert them to objects
+    /// Example(pseudo code) (CustomReadings[typeof(DateTime)] = new SQLCustomConversion(typeof(long) <- unix timestamp, (unix) => DateTime.FromUnix(unix))
+    /// The example above converts long to DateTime from unix timestamp
+    /// </summary>
     public Dictionary<Type, SQLCustomConversion> CustomReadings = new()
     {
-        [typeof(DateTime)] = new SQLCustomConversion(typeof(long), (obj) => 
+        [typeof(DateTime)] = new SQLCustomConversion(typeof(ulong), (obj) => 
         {
             if (obj is not long unix) return DateTime.MinValue;
 
             return (new DateTime(1970, 1, 1)).AddMilliseconds(unix);
         })
     };
-    public Dictionary<Type, string> CustomMYSQLTypes = new() 
-    {
-        [typeof(DateTime)] = "BIGINT UNSIGNED"
-    };
     /// <summary>
-    /// Dictionary of illegal characters in a string, (value is used 
+    /// Dictionary of illegal characters in a string, (value is used to prevent sql injection and javascript injection)
+    /// Default: (<, >, ')
     /// </summary>
     public HashSet<char> IllegalChars = new()
     {
@@ -59,12 +74,23 @@ public class MYSqlParser
         }
         return builder.ToString();
     }
-
+    /// <summary>
+    /// Parses/converts an object of known type to primitive type to be stored in the database
+    /// </summary>
+    /// <typeparam name="T">Type of the value</typeparam>
+    /// <param name="value">Value to be serilized </param>
+    /// <returns>SPrimitive serilized type</returns>
     public object Parse<T>(T value) => Parse(value, typeof(T));
-
+    /// <summary>
+    /// Parses/converts the object to the value the will be serilized in the database
+    /// DateTime example, Parse(DateTime.Now, typeof(DateTime) returns unix timestamp
+    /// </summary>
+    /// <param name="value">Value to be serilized</param>
+    /// <param name="type">Type of the value</param>
+    /// <returns>Primitive serilized type</returns>
     public object Parse(object value, Type type)
     {
-        if (CustomConversions.TryGetValue(type, out var func)) return func(value);
+        if (CustomWritings.TryGetValue(type, out var func)) return func(value);
 
         return value;
     }
@@ -84,7 +110,12 @@ public class MYSqlParser
         if (parameter is string str) return $"'{PurifyString(str)}'";
         else return parameter.ToString();
     }
-
+    /// <summary>
+    /// Reads data from the reader
+    /// </summary>
+    /// <param name="ordinal">Column index of the variable</param>
+    /// <param name="type">Type of the variable(type in the object)</param>
+    /// <returns>Returns read isntance of the object in the specified type</returns>
     public object ReadType(MySqlConnector.MySqlDataReader reader, int ordinal, Type type)
     {
         if (type == typeof(int)) return reader.GetInt32(ordinal);
@@ -100,7 +131,11 @@ public class SQLCustomConversion
 {
     public Type TypeInTable;
     public Func<object, object> Callback;
-
+    /// <summary>
+    /// Type of the value in CustomWrintings
+    /// </summary>
+    /// <param name="typeInTable">Type that is going to be stored in the table(DateTime -> typeof(long))</param>
+    /// <param name="callback">Callback to the creating of the serilized object</param>
     public SQLCustomConversion(Type typeInTable, Func<object, object> callback)
     {
         TypeInTable = typeInTable;

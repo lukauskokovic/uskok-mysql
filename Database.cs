@@ -20,10 +20,11 @@ public class Database : IDisposable
     /// <param name="connectionString">Connection string for mysql database</param>
     /// <param name="connections">How many connections are open at once in the pool(5 is default)</param>
     /// <param name="customConversion">Custom conversion for specific types</param>
+    /// <pa
     public Database(string connectionString, int connections = 5, Dictionary<Type, Func<object, object>> customConversion = null, Dictionary<Type, SQLCustomConversion> customReadings = null, Dictionary<Type, string> customMYSqlTypes = null)
     {
         ConnectionString = connectionString;
-        Parser = new(customConversion, customReadings, customMYSqlTypes);
+        Parser = new(customConversion, customReadings);
         Connections = new Connection[connections];
         LoopThread = new Thread(ThreadMethod);
         LoopThread.Start();

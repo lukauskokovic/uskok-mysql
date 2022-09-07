@@ -29,21 +29,23 @@ public class DatabaseTable<T> where T : class, new()
             if (field.GetCustomAttribute<ColumnIgnore>() is not null) continue;
 
             StringBuilder ExtraBuilder = new();
+            Type type = field.FieldType;
+            if (parentDatabase.Parser.CustomReadings.TryGetValue(field.FieldType, out var customConversion))
+                type = customConversion.TypeInTable;
 
-            if (!parentDatabase.Parser.CustomMYSQLTypes.TryGetValue(field.FieldType, out string TypeString))
+            string TypeString = string.Empty;
+            if (type == typeof(string))
             {
-                if (field.FieldType == typeof(string))
-                {
-                    if (field.GetCustomAttribute<MaxLength>() is MaxLength length)
-                        TypeString = $"VARCHAR({length.Length})";
-                    else TypeString = "TEXT";
-                }
-                else if (field.FieldType == typeof(int)) TypeString = "INT";
-                else if (field.FieldType == typeof(uint)) TypeString = "INT UNSIGNED";
-                else if (field.FieldType == typeof(long)) TypeString = "BIGINT";
-                else if (field.FieldType == typeof(ulong)) TypeString = "BIGINT UNSIGNED";
-                else if (field.FieldType == typeof(bool)) TypeString = "BOOLEAN";
+                if (field.GetCustomAttribute<MaxLength>() is MaxLength length)
+                    TypeString = $"VARCHAR({length.Length})";
+                else TypeString = "TEXT";
             }
+            else if (type == typeof(int)) TypeString = "INT";
+            else if (type == typeof(uint)) TypeString = "INT UNSIGNED";
+            else if (type == typeof(long)) TypeString = "BIGINT";
+            else if (type == typeof(ulong)) TypeString = "BIGINT UNSIGNED";
+            else if (type == typeof(bool)) TypeString = "BOOLEAN";
+            
 
             if (field.GetCustomAttribute<PrimaryKey>() is not null)
             {
