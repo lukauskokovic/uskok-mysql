@@ -30,7 +30,9 @@ internal class Connection
                 {
                     var reader = await Command.ExecuteReaderAsync();
                     await task.ReaderCallback(reader);
+                    await reader.DisposeAsync();
                 }
+                await Command.DisposeAsync();
             } 
             catch(Exception ex)
             {
@@ -45,5 +47,11 @@ internal class Connection
     {
         ConnectionInstane.Close();
         ConnectionInstane.Dispose();
+    }
+
+    public async Task CloseAsync()
+    {
+        await ConnectionInstane.CloseAsync();
+        await ConnectionInstane.DisposeAsync();
     }
 }

@@ -23,10 +23,7 @@ public class Database : IDisposable
     public Database(string connectionString, int connections = 5, Dictionary<Type, Func<object, object>> customConversion = null, Dictionary<Type, string> customMYSqlTypes = null)
     {
         ConnectionString = connectionString;
-        Parser = new() {
-            CustomConversions = customConversion ?? new(),
-            CustomMYSQLTypes = customMYSqlTypes ?? new()
-        };
+        Parser = new(customConversion, null, customMYSqlTypes);
         Connections = new Connection[connections];
         LoopThread = new Thread(ThreadMethod);
         LoopThread.Start();
@@ -40,9 +37,7 @@ public class Database : IDisposable
             while (true)
             {
                 while (TaskQueue.IsEmpty)
-                {
-                    Thread.Sleep(500);
-                }
+                    Thread.Sleep(1);
 
                 while (TaskQueue.TryDequeue(out var task))
                 {
@@ -94,6 +89,13 @@ public class Database : IDisposable
         for(int i = 0; i < Connections.Length; i++)
             Connections[i].Close();
     }
+
+    public async Task DisposeAsync()
+    {
+        LoopThread.Abort();
+        for (int i = 0; i < Connections.Length; i++)
+            await Connections[i].CloseAsync();
+    }
     /// <summary>
     /// Executes a mysql command
     /// </summary>
@@ -104,6 +106,6 @@ public class Database : IDisposable
     {
         MYSqlTask task = new() { Command = command, Finished = false, ReaderCallback = callback };
         TaskQueue.Enqueue(task);
-        while (!task.Finished) await Task.Delay(10);
+        while (!task.Finished) await Task.Delay(1);
     }
 }
