@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXIST `Table_Name` (SocialNumber INT, namelowercase TEXT);'
 ```
 
 ## Inserting
-``csharp
+```cs
 class Person{
   public int SocialNumber;
   public string Name;
@@ -142,7 +142,7 @@ await Table.Insert(p1, p2);
 
 ## Inserting and getting inserted ids
 This is considering the table is empty
-```csharp
+```cs
 class Person{
   [PrimaryKey]
   [AutoIncrement]
