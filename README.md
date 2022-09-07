@@ -142,7 +142,7 @@ await Table.Insert(p1, p2);
 
 ## Inserting and getting inserted ids
 This is considering the table is empty
-``csharp
+```csharp
 class Person{
   [PrimaryKey]
   [AutoIncrement]
