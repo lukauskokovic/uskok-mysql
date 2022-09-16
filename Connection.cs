@@ -31,6 +31,8 @@ internal class Connection
         {
             try
             {
+                if (ConnectionInstane.State == System.Data.ConnectionState.Closed)
+                    await ConnectionInstane.OpenAsync();
                 var Command = new MySqlCommand(task.Command, ConnectionInstane);
                 if (task.ReaderCallback == null)//Means that we dont expect anything back from the database(insert, replace, update)
                     await Command.ExecuteNonQueryAsync();
