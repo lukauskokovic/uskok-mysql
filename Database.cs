@@ -5,36 +5,49 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using MYSql;
 
-namespace MYSql;
+namespace uskok_mysql;
 public class Database : IDisposable
 {
     internal readonly string ConnectionString;
     public readonly MYSqlParser Parser;
     private readonly Connection[] Connections;
     private readonly Thread LoopThread;
-    private readonly ConcurrentQueue<MYSqlTask> TaskQueue = new();
+    private readonly ConcurrentQueue<MySqlTask> TaskQueue = new();
     /// <summary>
     /// Creates a database instance
     /// </summary>
     /// <param name="connectionString">Connection string for mysql database</param>
     /// <param name="connections">How many connections are open at once in the pool(5 is default)</param>
     /// <param name="customConversion">Custom conversion for specific types</param>
-    /// <pa
     public Database(string connectionString, int connections = 5, Dictionary<Type, Func<object, object>> customConversion = null, Dictionary<Type, SQLCustomConversion> customReadings = null, Dictionary<Type, string> customMYSqlTypes = null)
     {
         ConnectionString = connectionString;
-        Parser = new(customConversion, customReadings);
+        Parser = new MYSqlParser(customConversion, customReadings);
         Connections = new Connection[connections];
         LoopThread = new Thread(ThreadMethod);
         LoopThread.Start();
     }
-
-    void ThreadMethod()
+    private const int RECONNECT_TIMER = 2000;
+    private async void ThreadMethod()
     {
         try
         {
-            InitConnections();
+            while (true)
+            {
+                try
+                {
+                    InitConnections();
+                    Debugger.Print("MYSQL connections opened");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debugger.Print($"Could not initialize mysql connections '{ex.Message}' trying again in {RECONNECT_TIMER}ms");
+                    await Task.Delay(RECONNECT_TIMER);
+                }
+            }
             while (true)
             {
                 while (TaskQueue.IsEmpty)
@@ -42,20 +55,19 @@ public class Database : IDisposable
 
                 while (TaskQueue.TryDequeue(out var task))
                 {
-                    bool _putSomewhere = false;
-                    while (!_putSomewhere)
+                    var putSomewhere = false;
+                    while (!putSomewhere)
                     {
-                        for (int i = 0; i < Connections.Length; i++)
+                        for (var i = 0; i < Connections.Length; i++)
                         {
-                            if (!Connections[i].Used)
-                            {
-                                Connections[i].HandleTask(task);
-                                _putSomewhere = true;
-                                break;
-                            }
+                            if (Connections[i].Used) continue;
+                            
+                            Connections[i].HandleTask(task);
+                            putSomewhere = true;
+                            break;
                         }
 
-                        if (!_putSomewhere) Thread.Sleep(10);
+                        if (!putSomewhere) Thread.Sleep(10);
                     }
                 }
             }
@@ -64,48 +76,41 @@ public class Database : IDisposable
         {
             if (ex is ThreadAbortException) return;
 
-            Console.WriteLine("Fatal error on mysql thread!!{0}", ex.Message);
+            Debugger.Print($"Fatal error on mysql thread!! '{ex.Message}'");
         }
     }
 
-    void InitConnections()
+    
+    private void InitConnections()
     {
-        try
+        for(var i = 0; i < Connections.Length; i++)
         {
-            for(int i = 0; i < Connections.Length; i++)
-            {
-                Connections[i] = new(this);
-            }
-            Console.WriteLine("MYSql connections opened");
-        }
-        catch(Exception ex)
-        {
-            if (ex is ThreadAbortException) return;
-            Console.WriteLine("Could not initilize mysql connections {0}", ex.Message);
+            Connections[i] = new Connection(this);
         }
     }
     public void Dispose()
     {
         LoopThread.Abort();
-        for(int i = 0; i < Connections.Length; i++)
-            Connections[i].Close();
+        foreach (var connection in Connections)
+            connection.Close();
     }
 
     public async Task DisposeAsync()
     {
         LoopThread.Abort();
-        for (int i = 0; i < Connections.Length; i++)
-            await Connections[i].CloseAsync();
+        foreach (var connection in Connections)
+            await connection.CloseAsync();
     }
     /// <summary>
     /// Executes a mysql command
     /// </summary>
-    /// <param name="command">The mysql commmand (cannot be null)</param>
+    /// <param name="command">The mysql command (cannot be null)</param>
     /// <param name="callback">Callback to handle the reader(keep null if just inserting/no query)</param>
     /// <returns>A awaitable task</returns>
-    public async Task Execute(string command!!, Func<MySqlConnector.MySqlDataReader, Task> callback = null)
+    public async Task Execute(string command, Func<MySqlConnector.MySqlDataReader, Task> callback = null)
     {
-        MYSqlTask task = new() { Command = command, Finished = false, ReaderCallback = callback };
+        if (command == null) return;
+        MySqlTask task = new() { Command = command, Finished = false, ReaderCallback = callback };
         TaskQueue.Enqueue(task);
         while (!task.Finished) await Task.Delay(1);
     }

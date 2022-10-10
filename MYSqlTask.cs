@@ -4,8 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MYSql;
-internal class MYSqlTask
+namespace uskok_mysql;
+internal class MySqlTask
 {
     internal bool Finished = false;
     internal string Command = null;

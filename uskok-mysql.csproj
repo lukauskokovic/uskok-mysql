@@ -71,6 +71,7 @@
     <Compile Include="Atributes.cs" />
     <Compile Include="Connection.cs" />
     <Compile Include="Database.cs" />
+    <Compile Include="Debugger.cs" />
     <Compile Include="MYSqlTask.cs" />
     <Compile Include="Parser.cs" />
     <Compile Include="Table.cs" />

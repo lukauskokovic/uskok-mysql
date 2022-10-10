@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MYSql;
+namespace uskok_mysql;
 
 public class DatabaseTable<T> where T : class, new()
 {
@@ -20,20 +20,20 @@ public class DatabaseTable<T> where T : class, new()
         Name = tableName;
         Parent = parentDatabase;
         List<Column> ColumnList = new();
-        FieldInfo[] Fields = typeof(T).GetFields();
+        var Fields = typeof(T).GetFields();
         StringBuilder InitBuilder = new($"CREATE TABLE IF NOT EXISTS `{Name}` (");
-        for (int i = 0; i < Fields.Length; i++)
+        for (var i = 0; i < Fields.Length; i++)
         {
-            bool isAutoIncrement = false;
-            FieldInfo field = Fields[i];
+            var isAutoIncrement = false;
+            var field = Fields[i];
             if (field.GetCustomAttribute<ColumnIgnore>() is not null) continue;
 
             StringBuilder ExtraBuilder = new();
-            Type type = field.FieldType;
+            var type = field.FieldType;
             if (parentDatabase.Parser.CustomReadings.TryGetValue(field.FieldType, out var customConversion))
                 type = customConversion.TypeInTable;
 
-            string TypeString = string.Empty;
+            var TypeString = string.Empty;
             if (type == typeof(string))
             {
                 if (field.GetCustomAttribute<MaxLength>() is MaxLength length)
@@ -59,7 +59,7 @@ public class DatabaseTable<T> where T : class, new()
                 isAutoIncrement = true;
             }
             //Format: Name TYPE(TEXT, BIGINT) [AUTO_INCREMENT, PRIMARY KEY, NOT NULL(<- extras)][,(if not the last field)]
-            string NameString = field.Name;
+            var NameString = field.Name;
             if (field.GetCustomAttribute<ColumnName>() is ColumnName nameAttribute) NameString = nameAttribute.Name;
             InitBuilder.Append($"{NameString} {TypeString}{ExtraBuilder},");
             ExtraBuilder.Clear();
@@ -72,25 +72,21 @@ public class DatabaseTable<T> where T : class, new()
         ColumnList.Clear();
         if (Columns.Length == 0)
         {
-            Console.WriteLine($"WARNING: Table {Name} is emtpy");
+            Debugger.Print($"WARNING: Table {Name} is emtpy");
             InitBuilder.Clear();
             return;
         }
-        string Command = InitBuilder.ToString();
+        var command = InitBuilder.ToString();
         InitBuilder.Clear();
-        Task.Run(async () => 
-        {
-            await parentDatabase.Execute(Command);
-            Created = true;
-        });
+        parentDatabase.Execute(command).GetAwaiter().GetResult();
+        Created = true;
     }
 
     private string GetInsertString(T value)
     {
         StringBuilder stringBuilder = new("(");
-        for (int i = 0; i < Columns.Length; i++)
+        foreach (var column in Columns)
         {
-            var column = Columns[i];
             if (column.AutoIncrement)
             {
                 stringBuilder.Append("null,");
