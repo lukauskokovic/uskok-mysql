@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace MYSql.Attribues;
+namespace uskok_mysql.Attribues;
 /// <summary>
 /// Used for specyfing a primary key in a column
 /// </summary>

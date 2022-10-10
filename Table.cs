@@ -1,7 +1,6 @@
-﻿using MYSql.Attribues;
+﻿using uskok_mysql.Attribues;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
