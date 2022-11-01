@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Debugger = uskok_mysql.Debugger;
 
 namespace MYSql;
 public class MYSqlParser
@@ -116,8 +118,9 @@ public class MYSqlParser
     /// <param name="ordinal">Column index of the variable</param>
     /// <param name="type">Type of the variable(type in the object)</param>
     /// <returns>Returns read isntance of the object in the specified type</returns>
-    public object ReadType(MySqlConnector.MySqlDataReader reader, int ordinal, Type type)
+    public async Task<object> ReadType(MySqlConnector.MySqlDataReader reader, int ordinal, Type type)
     {
+        if (await reader.IsDBNullAsync(ordinal)) return null;
         if (type == typeof(int)) return reader.GetInt32(ordinal);
         if (type == typeof(uint)) return reader.GetUInt32(ordinal);
         if (type == typeof(long)) return reader.GetInt64(ordinal);

@@ -139,7 +139,7 @@ public class DatabaseTable<T> where T : class, new()
         {
             for (int i = ids.Length-1; i >= 0 && await reader.ReadAsync(); i--)
             {
-                ids[i] = Parent.Parser.ReadType(reader, 0, idColumn.FieldInfo.FieldType);
+                ids[i] = await Parent.Parser.ReadType(reader, 0, idColumn.FieldInfo.FieldType);
             }
         });
         return ids;
@@ -170,7 +170,7 @@ public class DatabaseTable<T> where T : class, new()
                     bool isCustom = Parent.Parser.CustomReadings.TryGetValue(column.FieldInfo.FieldType, out var customConversion);
                     Type typeToRead = isCustom? customConversion.TypeInTable : column.FieldInfo.FieldType;
 
-                    object readValue = Parent.Parser.ReadType(reader, i, typeToRead);
+                    var readValue = await Parent.Parser.ReadType(reader, i, typeToRead);
 
                     if (isCustom) readValue = customConversion.Callback(readValue);
 

@@ -1,5 +1,6 @@
 ﻿using MySqlConnector;
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace uskok_mysql;
@@ -28,26 +29,33 @@ internal class Connection
     internal async void HandleTask(MySqlTask task)
     {
         Used = true;
+        MySqlCommand command = null;
         try
         {
             if (_connectionInstance.State == System.Data.ConnectionState.Closed)
                 await _connectionInstance.OpenAsync();
-            var Command = new MySqlCommand(task.Command, _connectionInstance);
-            if (task.ReaderCallback == null)//Means that we dont expect anything back from the database(insert, replace, update)
-                await Command.ExecuteNonQueryAsync();
+            command = new MySqlCommand(task.Command, _connectionInstance);
+            if (task.ReaderCallback == null) //Means that we dont expect anything back from the database(insert, replace, update)
+                await command.ExecuteNonQueryAsync();
             else
             {
                 //Gets the reader
-                var reader = await Command.ExecuteReaderAsync();
+                var reader = await command.ExecuteReaderAsync();
                 //Awaits the reader callback(reading data)
                 await task.ReaderCallback(reader);
                 await reader.DisposeAsync();
             }
-            await Command.DisposeAsync();
-        } 
-        catch(Exception ex)
+        }
+        catch (Exception ex)
         {
+            Debugger.Print(ex.ToString());
             Debugger.Print($"Error processing {task.Command}: {ex.Message}");
+
+        }
+        finally
+        {
+            if(command != null)
+                await command.DisposeAsync();
         }
         task.Finished = true;
         Used = false;
