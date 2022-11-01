@@ -44,6 +44,8 @@ public class DatabaseTable<T> where T : class, new()
             else if (type == typeof(long)) TypeString = "BIGINT";
             else if (type == typeof(ulong)) TypeString = "BIGINT UNSIGNED";
             else if (type == typeof(bool)) TypeString = "BOOLEAN";
+            else if (type == typeof(float)) TypeString = "FLOAT";
+            else if (type == typeof(double)) TypeString = "DOUBLE";
             
 
             if (field.GetCustomAttribute<PrimaryKey>() is not null)

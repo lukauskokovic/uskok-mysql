@@ -127,6 +127,8 @@ public class MYSqlParser
         if (type == typeof(ulong)) return reader.GetUInt64(ordinal);
         if (type == typeof(string)) return reader.GetString(ordinal);
         if (type == typeof(bool)) return reader.GetBoolean(ordinal);
+        if (type == typeof(float)) return reader.GetFloat(ordinal);
+        if (type == typeof(double)) return reader.GetDouble(ordinal);
         return null;
     }
 }
