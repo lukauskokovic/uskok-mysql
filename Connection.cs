@@ -26,10 +26,11 @@ internal class Connection
         Used = false;
     }
 
-    internal async void HandleTask(MySqlTask task)
+    internal async Task HandleTask(MySqlTask task)
     {
         Used = true;
         MySqlCommand command = null;
+        MySqlDataReader reader = null;
         try
         {
             if (_connectionInstance.State == System.Data.ConnectionState.Closed)
@@ -40,22 +41,32 @@ internal class Connection
             else
             {
                 //Gets the reader
-                var reader = await command.ExecuteReaderAsync();
+                reader = await command.ExecuteReaderAsync();
                 //Awaits the reader callback(reading data)
                 await task.ReaderCallback(reader);
-                await reader.DisposeAsync();
             }
         }
         catch (Exception ex)
         {
-            Debugger.Print(ex.ToString());
-            Debugger.Print($"Error processing {task.Command}: {ex.Message}");
+            if (ex is MySqlException mySqlException)
+            {
+                if (mySqlException.ErrorCode is MySqlErrorCode.None or MySqlErrorCode.UnableToConnectToHost)
+                {
+                    Debugger.Print($"Error processing {task.Command}: {ex.Message}, Trying again");
+                    if (command != null)
+                        await command.DisposeAsync();
+                    await HandleTask(task);
+                }
+            }
+            else Debugger.Print($"Error processing {task.Command}: {ex.Message}");
 
         }
         finally
         {
             if(command != null)
                 await command.DisposeAsync();
+            if(reader != null)
+                await reader.DisposeAsync();
         }
         task.Finished = true;
         Used = false;

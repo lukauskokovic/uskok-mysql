@@ -1,41 +1,40 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Debugger = uskok_mysql.Debugger;
 
 namespace MYSql;
 public class MYSqlParser
 {
-    public MYSqlParser(Dictionary<Type, Func<object, object>> customWritings = null, Dictionary<Type, SQLCustomConversion> customReadings = null)
+    public MYSqlParser(Dictionary<Type, Func<object, object>> customWritings = null, Dictionary<Type, SQLCustomConversion> customReadings = null, HashSet<char> illegalChars = null)
     {
-        AddToDictiaonry(CustomWritings, customWritings);
-        AddToDictiaonry(CustomReadings, customReadings);
+        AddToDictionary(_customWritings, customWritings);
+        AddToDictionary(CustomReadings, customReadings);
+        if(illegalChars != null)
+            foreach (var c in illegalChars)
+            {
+                _illegalChars.Add(c);
+            }
     }
 
-    private void AddToDictiaonry<Tkey, Tvalue>(Dictionary<Tkey, Tvalue> source, Dictionary<Tkey, Tvalue> addition)
+    private static void AddToDictionary<TKey, TValue>(IDictionary<TKey, TValue> source, Dictionary<TKey, TValue> addition)
     {
         if (addition == null) return;
-
         foreach(var item in addition)
-        {
             source[item.Key] = item.Value;
-        }
     }
     /// <summary>
     /// Dictionary with rules on how to serilize custom object types to primitive types (example TestClass->long)
     /// Example(pseudo code) CustomWritings[typeof(DateTime)] = (datetime) => (long)DateTime.ToUnix((DateTime)datetime)
     /// The example above converts datetime to long which will be stored in the table
     /// </summary>
-    public Dictionary<Type, Func<object, object>> CustomWritings = new()
+    private readonly Dictionary<Type, Func<object, object>> _customWritings = new()
     {
-        [typeof(DateTime)] = (obj) => 
+        [typeof(DateTime)] = obj => 
         {
-            DateTime time = (DateTime)obj;
-            ulong unixTimestamp = (ulong)time.Subtract(new DateTime(1970, 1, 1)).TotalMilliseconds;
-            return unixTimestamp;
+            var time = (DateTime)obj;
+            return (ulong)time.Subtract(new DateTime(1970, 1, 1)).TotalMilliseconds;
         }
     };
     /// <summary>
@@ -43,20 +42,16 @@ public class MYSqlParser
     /// Example(pseudo code) (CustomReadings[typeof(DateTime)] = new SQLCustomConversion(typeof(long) <- unix timestamp, (unix) => DateTime.FromUnix(unix))
     /// The example above converts long to DateTime from unix timestamp
     /// </summary>
-    public Dictionary<Type, SQLCustomConversion> CustomReadings = new()
+    public readonly Dictionary<Type, SQLCustomConversion> CustomReadings = new()
     {
         [typeof(DateTime)] = new SQLCustomConversion(typeof(ulong), (obj) => 
-        {
-            if (obj is not long unix) return DateTime.MinValue;
-
-            return (new DateTime(1970, 1, 1)).AddMilliseconds(unix);
-        })
+            obj is not long unix ? DateTime.MinValue : (new DateTime(1970, 1, 1)).AddMilliseconds(unix))
     };
     /// <summary>
     /// Dictionary of illegal characters in a string, (value is used to prevent sql injection and javascript injection)
     /// Default: (<, >, ')
     /// </summary>
-    public HashSet<char> IllegalChars = new()
+    private readonly HashSet<char> _illegalChars = new()
     {
         '<', '>', (char)39//(char)39 = '
     };
@@ -68,14 +63,13 @@ public class MYSqlParser
     public string PurifyString(string str)
     {
         StringBuilder builder = new();
-        for (int charIndex = 0; charIndex < str.Length; charIndex++)
+        foreach (var c in str.Where(c => !_illegalChars.Contains(c)))
         {
-            char c = str[charIndex];
-            if (!IllegalChars.Contains(c))
-                builder.Append(c);
+            builder.Append(c);
         }
         return builder.ToString();
     }
+
     /// <summary>
     /// Parses/converts an object of known type to primitive type to be stored in the database
     /// </summary>
@@ -92,25 +86,24 @@ public class MYSqlParser
     /// <returns>Primitive serilized type</returns>
     public object Parse(object value, Type type)
     {
-        if (CustomWritings.TryGetValue(type, out var func)) return func(value);
-
-        return value;
+        return _customWritings.TryGetValue(type, out var func) ? func(value) : value;
     }
+
     /// <summary>
     /// Get the sql string of an object
     /// </summary>
     /// <param name="obj">Any parser accepted object</param>
+    /// <param name="type">Type of the object</param>
     /// <returns>String of the object(GetSQLString("test") => 'test', GetSQLString(DateTime.Now) => 12515215(unix now)))</returns>
     public string GetSQLString(object obj, Type type)
     {
-        object parameter = Parse(obj, type);
-        
-        if (parameter == null)
-            return "null";
-        
-        
-        if (parameter is string str) return $"'{PurifyString(str)}'";
-        else return parameter.ToString();
+        var parameter = Parse(obj, type);
+        return parameter switch
+        {
+            null => "null",
+            string str => $"'{PurifyString(str)}'",
+            _ => parameter.ToString()
+        };
     }
     /// <summary>
     /// Reads data from the reader
@@ -120,7 +113,9 @@ public class MYSqlParser
     /// <returns>Returns read isntance of the object in the specified type</returns>
     public async Task<object> ReadType(MySqlConnector.MySqlDataReader reader, int ordinal, Type type)
     {
-        if (await reader.IsDBNullAsync(ordinal)) return null;
+        if (await reader.IsDBNullAsync(ordinal))
+            return null;
+        
         if (type == typeof(int)) return reader.GetInt32(ordinal);
         if (type == typeof(uint)) return reader.GetUInt32(ordinal);
         if (type == typeof(long)) return reader.GetInt64(ordinal);
